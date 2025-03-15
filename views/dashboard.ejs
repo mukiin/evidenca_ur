@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prijava</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .btn-custom {
+            margin: 5px;
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+    </style>
+    <style>
+        
+section, footer {
+    background: #f8f9fa;
+    color: #868c96;
+}
+
+footer p {
+    padding: 40px 0;
+    text-align: center;
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Dobrodošlica i odjava -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Dobrodošel, <%= user.uporabnisko_ime %> </h2>
+            <a href="/logout" class="btn btn-danger">Odjava</a>
+        </div>
+
+        <!-- Forma za unos sati -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title">Vnos ur</h3>
+                <form action="/dodaj_ure" method="POST">
+                    <div class="mb-3">
+                        <label for="projekt_id" class="form-label">Projekt:</label>
+                        <select name="projekt_id" class="form-select" required>
+                            <% projekti.forEach(projekt => { %>
+                                <option value="<%= projekt.id %>"><%= projekt.naziv %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="datum" class="form-label">Datum:</label>
+                        <input type="date" name="datum" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kolicina_ur" class="form-label">Količina ur:</label>
+                        <input type="number" name="kolicina_ur" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Dodaj</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Filter po projektu -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title">Seznam ur</h3>
+                <div class="mb-3">
+                    <label for="projektSelect" class="form-label">Izberi projekt:</label>
+                    <select id="projektSelect" class="form-select">
+                        <option value="">-- Izberi projekt --</option>
+                        <% projekti.forEach(projekt => { %>
+                            <option value="<%= projekt.id %>"><%= projekt.naziv %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div id="projektUre">
+                    <div id="noDataMessage" class="alert alert-warning" style="display: none;">
+                        Za izbrani projekt trenutno ni podatkov o urah.
+                    </div>
+                </div>
+                <p id="totalHoursForSelectedProject" class="fw-bold">Skupno število ur za izbrani projekt:</p>
+            </div>
+        </div>
+
+        <!-- Tabela za prikaz sati -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Uporabniško ime</th>
+                        <th>Projekt</th>
+                        <th>Količina ur</th>
+                        <th>Datum</th>
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+                <tbody id="urediSate">
+                    <!-- Dinamički popunjeno  -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Forma za uređivanje (sakrivena) -->
+        <div id="editForm" class="card" style="display: none;">
+            <div class="card-body">
+                <h4 class="card-title">Uredi ure</h4>
+                <form action="/uredi_ure" method="POST">
+                    <input type="hidden" name="id" id="editId">
+                    <div class="mb-3">
+                        <label for="editDatum" class="form-label">Datum:</label>
+                        <input type="date" name="datum" id="editDatum" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editKolicina" class="form-label">Količina ur:</label>
+                        <input type="number" name="kolicina_ur" id="editKolicina" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Shrani</button>
+                    <button type="button" id="cancelEdit" class="btn btn-secondary">Prekliči</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dugme za prikaz ukupnih sati (samo za zaposlene) -->
+        <% if (user.pravice !== 'vodja') { %>
+            <button id="showTotalHoursBtn" class="btn btn-info btn-custom">Prikaži skupne ure po projektih</button>
+        <% } %>
+
+        <!-- Lista ukupnih sati po projektima (sakrivena) -->
+        <ul id="totalHoursList" class="list-group" style="display: none;">
+            <% projekti.forEach(projekt => { %>
+                <li class="list-group-item">
+                    <%= projekt.naziv %>: 
+                    <% 
+                        let totalHours = 0;
+                        ure_skupno.forEach(item => {
+                            if (item.projekt_id === projekt.id) {
+                                totalHours += item.skupno_ur;
+                            }
+                        });
+                    %>
+                    <%= totalHours %> ur
+                </li>
+            <% }) %>
+        </ul>
+    </div>
+<br>
+<footer>
+    <p>Razvoj programskih aplikacij &copy; 2025 Mustafa Čizmić.</p>
+</footer>
+
+    <!-- Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const projektSelect = document.getElementById("projektSelect");
+            const noDataMessage = document.getElementById("noDataMessage");
+            const projektUre = document.getElementById("projektUre");
+            const totalHoursForSelectedProject = document.getElementById("totalHoursForSelectedProject");
+            const editForm = document.getElementById("editForm");
+            const cancelEditButton = document.getElementById("cancelEdit");
+
+            projektSelect.addEventListener("change", filterByProject);
+
+            function filterByProject() {
+                const selectedProject = projektSelect.value;
+                projektUre.innerHTML = '';
+                totalHoursForSelectedProject.innerHTML = "Izberite projekt za prikaz skupnih ur.";
+
+                if (!selectedProject) {
+                    noDataMessage.style.display = 'none';
+                    return;
+                }
+
+                fetch(`/ure-za-projekt/${selectedProject}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.ure && data.ure.length === 0) {
+                            noDataMessage.style.display = 'block';
+                        } else {
+                            noDataMessage.style.display = 'none';
+                            const tableBody = document.getElementById("urediSate");
+                            tableBody.innerHTML = '';
+                            data.ure.forEach(ura => {
+                                const row = `
+                                    <tr>
+                                        <td>${ura.uporabnisko_ime}</td>
+                                        <td>${ura.naziv}</td>
+                                        <td>${ura.kolicina_ur}</td>
+                                        <td>${new Date(ura.datum).toLocaleDateString("sl-SI")}</td>
+                                        <td>
+                                            <button class="btn btn-warning btn-sm editBtn" data-id="${ura.id}" data-datum="${ura.datum}" data-kolicina_ur="${ura.kolicina_ur}">Uredi</button>
+                                            <button class="btn btn-danger btn-sm deleteBtn" data-id="${ura.id}">Izbriši</button>
+                                        </td>
+                                    </tr>
+                                `;
+                                tableBody.innerHTML += row;
+                            });
+
+                            const totalHours = data.ure.reduce((sum, ura) => sum + ura.kolicina_ur, 0);
+                            totalHoursForSelectedProject.innerHTML = `Skupno število ur za izbrani projekt: ${totalHours} ur`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Napaka pri pridobivanju podatkov:', error);
+                        noDataMessage.style.display = 'block';
+                    });
+            }
+
+            // Uredi sate - otvaranje forme za uređivanje
+            document.addEventListener("click", function(event) {
+                if (event.target.classList.contains("editBtn")) {
+                    const id = event.target.getAttribute("data-id");
+                    const datum = event.target.getAttribute("data-datum");
+                    const kolicina_ur = event.target.getAttribute("data-kolicina_ur");
+
+                    document.getElementById("editId").value = id;
+                    document.getElementById("editDatum").value = new Date(datum).toISOString().split('T')[0];
+                    document.getElementById("editKolicina").value = kolicina_ur;
+
+                    editForm.style.display = "block";
+                }
+            });
+
+            // Otkazivanje uređivanja
+            cancelEditButton.addEventListener("click", function() {
+                editForm.style.display = "none";
+            });
+
+            // Brisanje sati
+            document.addEventListener("click", function(event) {
+                if (event.target.classList.contains("deleteBtn")) {
+                    const id = event.target.getAttribute("data-id");
+                    if (confirm('Ali ste prepričani, da želite izbrisati ta vnos?')) {
+                        fetch(`/obrisi_ure/${id}`, { method: 'DELETE' })
+                            .then(response => {
+                                if (response.ok) {
+                                    alert('Podatki so bili uspešno izbrisani!');
+                                    location.reload();
+                                } else {
+                                    alert('Napaka pri brisanju podatkov.');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Napaka pri pošiljanju zahteve:', error);
+                                alert('Prišlo je do napake.');
+                            });
+                    }
+                }
+            });
+
+            // Prikaz ukupnih sati po projektima
+            const showTotalHoursBtn = document.getElementById("showTotalHoursBtn");
+            const totalHoursList = document.getElementById("totalHoursList");
+
+            if (showTotalHoursBtn) {
+                showTotalHoursBtn.addEventListener("click", function() {
+                    if (totalHoursList.style.display === "none") {
+                        totalHoursList.style.display = "block";
+                        showTotalHoursBtn.textContent = "Sakrij skupne ure po projektih";
+                    } else {
+                        totalHoursList.style.display = "none";
+                        showTotalHoursBtn.textContent = "Prikazuj skupne ure po projektih";
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

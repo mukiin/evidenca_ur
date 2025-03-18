@@ -18,7 +18,8 @@ const port = 3000;
 const db = mysql.createConnection({
     host: "web06.g-server.com",
     user: "srednjap_test",
-    password: "4RPhMtBbQX",
+    //password: "4RPhMtBbQX",
+    password: "srednjap_test",
     database: "srednjap_test",
     waitForConnections: true,
     //connectionLimit: 10,

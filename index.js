@@ -7,12 +7,23 @@ const app = express();
 const port = 3000;
 
 // Povezava z MySQL
+//const db = mysql.createConnection({
+///    host: "localhost",
+//    user: "root",
+ //   password: "",
+ //   database: "evidenca_ur"
+//});
+
+// KONEKCIJA NA BAZU PODATAKA na serveru
 const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "evidenca_ur"
-});
+    host: "web06.g-server.com",
+    user: "srednjap_test",
+    password: "4RPhMtBbQX",
+    database: "srednjap_test",
+    waitForConnections: true,
+    //connectionLimit: 10,
+    queueLimit: 0
+  });
 
 db.connect(err => {
     if (err) {
